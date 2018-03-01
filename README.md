@@ -1,0 +1,2 @@
+# Lawn Mower (Engineering Capstone Project)
+This is the repository for the remote-controlled (soon to be autonomous) lawn mower engineering capstone project. It holds the client (iOS app) and server (Raspberry Pi TCP Server Java app) code as well as other resources (links, documents, etc.)
