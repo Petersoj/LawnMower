@@ -1,2 +1,2 @@
 # Lawn Mower (Engineering Capstone Project)
-This is the repository for the remote-controlled (soon to be autonomous) lawn mower engineering capstone project. It contains the Lawn Mower Raspberry Pi code (Python) and the Remote Controller Arduino code (Arduino script).
+This is the repository for the remote-controlled (soon to be autonomous) lawn mower engineering capstone project. It contains the Lawn Mower Arduino code (may be Raspberry Pi Python code in the future) and the Remote Controller Arduino code.
