@@ -13,13 +13,17 @@
 #include <Wire.h>
 #include <nRF24L01.h>
 #include "RF24.h"
-#include <Adafruit_GFX.h>
+//#include <Adafruit_GFX.h> use later for cool fx :)
 #include <Adafruit_SSD1306.h>
 
 // Setup Display
 //#define OLED_RESET 4
 const int OLED_RESET = 4;
 Adafruit_SSD1306 display(OLED_RESET);
+
+#if (SSD1306_LCDHEIGHT != 64)
+#error("Height incorrect, please fix Adafruit_SSD1306.h!");
+#endif
 
 // Setup Radio
 RF24 radio(7, 8); // CE, CSN pins
@@ -32,14 +36,14 @@ RF24 radio(7, 8); // CE, CSN pins
 // SCK - 13
 // MOSI - 11
 // MISO - 12
-// SSD1306 Display pins
+// SSD1306 Display pins (i2c)
 // SDA - A4
 // SCL - A5
+const byte leftTrimPin = 4;
+const byte rightTrimPin = 5;
 const byte throttlePin = A0;
 const byte turnPin = A1;
 const byte batteryVoltagePin = A2;
-const byte leftTrimPin = 4;
-const byte rightTrimPin = 5;
 
 
 // Address used by radio
@@ -54,6 +58,20 @@ int currentDrawRightMotor = 0;
 int currentDrawBladeMotor = 0;
 
 void setup() {
+
+  // by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3D (for the 128x64)
+  // init done
+  
+  // Show image buffer on the display hardware.
+  // Since the buffer is intialized with an Adafruit splashscreen
+  // internally, this will display the splashscreen.
+  display.display();
+  delay(500);
+
+  // Clear the buffer.
+  display.clearDisplay();
+  
   // Start NRF24L01+
   radio.begin();
   // Configure Radio
@@ -67,5 +85,4 @@ void setup() {
 
 void loop() {
   //radio.write(&text, sizeof(text));
-  
 }
