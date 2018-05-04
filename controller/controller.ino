@@ -10,9 +10,9 @@
 
 // Libraries
 #include <SPI.h>
-#include <Wire.h>
 #include <nRF24L01.h>
-#include "RF24.h"
+#include <RF24.h>
+#include <Wire.h>
 //#include <Adafruit_GFX.h> use later for cool fx :)
 #include <Adafruit_SSD1306.h>
 
@@ -28,6 +28,28 @@ Adafruit_SSD1306 display(OLED_RESET);
 // Setup Radio
 RF24 radio(7, 8); // CE, CSN pins
 
+// Addresses used by radio
+const byte mowerWritingAddress[] = "mower";
+const byte controllerWritingAddress[] = "cntrl";
+
+// struct for receiving data from mower
+typedef struct {
+  byte batteryPercentage;
+  byte currentDraw; // In Amps
+}
+ReceiveRadioData;
+
+// struct for transmitting data to mower
+typedef struct {
+  byte throttle; // 0-100
+  byte turn; // 0-126 left turn, 127 straight, 128-255 right turn
+  boolean backwards; // Uses right joystick moved all the way down.
+}
+TransmitRadioData;
+
+// Construct RadioData
+TransmitRadioData transmitRadioData;
+ReceiveRadioData receiveRadioData;
 
 // - Pinout - 
 // NRF24 pins
@@ -43,11 +65,8 @@ const byte leftTrimPin = 4;
 const byte rightTrimPin = 5;
 const byte throttlePin = A0;
 const byte turnPin = A1;
-const byte batteryVoltagePin = A2;
-
-
-// Address used by radio
-const byte addresses[][6] = {"LAWNr", "LAWNw"};
+const byte backwardsPin = A2;
+const byte batteryVoltagePin = A3;
 
 int throttlePercentage = 0;
 int leftMotorTrim = 0; // Expressed in a value 
@@ -59,30 +78,57 @@ int currentDrawBladeMotor = 0;
 
 void setup() {
 
-  // by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3D (for the 128x64)
-  // init done
-  
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3D
   // Show image buffer on the display hardware.
   // Since the buffer is intialized with an Adafruit splashscreen
   // internally, this will display the splashscreen.
   display.display();
-  delay(500);
-
+  delay(100);
   // Clear the buffer.
   display.clearDisplay();
   
-  // Start NRF24L01+
+  
+  // Configure transceiver
   radio.begin();
-  // Configure Radio
-  radio.openReadingPipe(0, addresses[0]);
-  radio.openWritingPipe(addresses[1]);
   radio.setChannel(122);
   radio.setPALevel(RF24_PA_MAX);
   radio.setDataRate(RF24_250KBPS);
-  radio.stopListening();
+  radio.setPayloadSize(max(sizeof(transmitRadioData), sizeof(receiveRadioData)));
+  radio.openReadingPipe(0, mowerWritingAddress);
+  radio.openWritingPipe(controllerWritingAddress);
+  // Start listening for data
+  radio.startListening();
 }
 
 void loop() {
-  //radio.write(&text, sizeof(text));
+  
 }
+
+byte unsuccessfulTxIndex = 0; // Counts unsuccessful writes
+void executeRadioLogic() {
+  // This radio logic is primarily acting as the receiver of data
+  // although we do send necessary data back.
+  
+  if (radio.available()) { // Check if data in rx buffer
+    while (radio.available()) { // Get last data if multiple packets in buffer
+      radio.read(&receiveRadioData, sizeof(receiveRadioData)); // Read into struct obj
+    }
+
+    // Close radio buffer and prepare for writing data
+    radio.stopListening();
+
+    if (radio.write(&transmitRadioData, sizeof(transmitRadioData))) {
+      unsuccessfulTxIndex++;
+    } else {
+      unsuccessfulTxIndex = 0;
+    }
+    
+    // Open radio buffer and prepare for reading data
+    radio.startListening();
+
+    if (unsuccessfulTxIndex > 3) { // 3 times in a row data tx was unsuccessful
+      // TODO inform user of error
+    }
+  }
+}
+
